@@ -233,7 +233,8 @@ class ChargePoint:
 
         # A queue used to pass CallResults and CallErrors from
         # the self.serve() task to the self.call() task.
-        self._response_queue = asyncio.Queue()
+        self._response_queue = {}
+        # self._response_queue = asyncio.Queue()
 
         # Function used to generate unique ids for CALLs. By default
         # uuid.uuid4() is used, but it can be changed. This is meant primarily
@@ -280,7 +281,8 @@ class ChargePoint:
 
         elif msg.message_type_id in [MessageType.CallResult, MessageType.CallError]:
             self.logger.warning(f"Messagem teste: {msg}")
-            self._response_queue.put_nowait(msg)
+            # self._response_queue.put_nowait(msg)
+            self._response_queue[msg.unique_id] = msg
 
     async def _handle_call(self, msg):
         """
@@ -456,7 +458,7 @@ class ChargePoint:
         wait_until = time.time() + timeout
         try:
             # Wait for response of the Call message.
-            response = await asyncio.wait_for(self._response_queue.get(), timeout)
+            response = await asyncio.wait_for(self._response_queue[unique_id], timeout)
         except asyncio.TimeoutError:
             raise
 
