@@ -4,6 +4,7 @@ import logging
 import re
 import time
 import uuid
+import json
 from dataclasses import Field, asdict, is_dataclass
 from typing import Any, Dict, List, Union, get_args, get_origin
 
@@ -199,7 +200,7 @@ class ChargePoint:
     initiated and received by the Central System
     """
 
-    def __init__(self, id, connection, response_timeout=30, logger=LOGGER):
+    def __init__(self, id, connection, response_timeout=30, cursor=None, logger=LOGGER):
         """
 
         Args:
@@ -213,6 +214,7 @@ class ChargePoint:
 
         """
         self.id = id
+        self._cursor = cursor
 
         # The maximum time in seconds it may take for a CP to respond to a
         # CALL. An asyncio.TimeoutError will be raised if this limit has been
@@ -258,6 +260,7 @@ class ChargePoint:
         """
         try:
             msg = unpack(raw_msg)
+            self._cursor.execute(f"INSERT INTO carregadorlog (log, evento, idcarregador) VALUES ('{json.dumps(msg.payload)}', '{msg.action}', (SELECT idcarregador FROM carregador WHERE cdcarregador = '{self.id}'))")
         except OCPPError as e:
             self.logger.exception(
                 "Unable to parse message: '%s', it doesn't seem "
@@ -276,6 +279,7 @@ class ChargePoint:
                 await self._send(response)
 
         elif msg.message_type_id in [MessageType.CallResult, MessageType.CallError]:
+            self.logger.warning(f"Messagem teste: {msg}")
             self._response_queue.put_nowait(msg)
 
     async def _handle_call(self, msg):
